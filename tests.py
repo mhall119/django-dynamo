@@ -21,3 +21,31 @@ Another way to test that 1 + 1 is equal to 2.
 True
 """}
 
+def mktestmodel():
+    from dynamo import models
+    test_app, created = models.DynamicApp.objects.get_or_create(name='test')
+    test, created = models.DynamicModel.objects.get_or_create(name='Test', verbose_name='Test Model', app=test_app)
+    foo, created = models.DynamicModelField.objects.get_or_create(
+        name = 'foo',
+        verbose_name = 'Foo Field',
+        model = test,
+        field_type = 'dynamiccharfield',
+        null = True,
+        blank = True,
+        unique = False,
+        help_text = 'Test field for Foo',
+    )
+    bar, created = models.DynamicModelField.objects.get_or_create(
+        name = 'bar',
+        verbose_name = 'Bar Field',
+        model = test,
+        field_type = 'dynamiccharfield',
+        null = True,
+        blank = True,
+        unique = False,
+        help_text = 'Test field for Bar',
+    )
+    return test
+    
+model = mktestmodel()
+
