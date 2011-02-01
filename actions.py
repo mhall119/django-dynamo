@@ -19,6 +19,10 @@ def create(model, using):
     created_models = set()
     pending_references = {}
     
+    # Abort if the table we're going to create already exists
+    if model._meta.db_table in tables:
+        return
+        
     # Build the manifest of apps and models that are to be synchronized
     all_models = [
         (app.__name__.split('.')[-2],

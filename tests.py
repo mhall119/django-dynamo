@@ -23,7 +23,7 @@ True
 
 def mktestmodel():
     from dynamo import models
-    test_app, created = models.DynamicApp.objects.get_or_create(name='test')
+    test_app, created = models.DynamicApp.objects.get_or_create(name='dynamo')
     test, created = models.DynamicModel.objects.get_or_create(name='Test', verbose_name='Test Model', app=test_app)
     foo, created = models.DynamicModelField.objects.get_or_create(
         name = 'foo',
@@ -44,6 +44,12 @@ def mktestmodel():
         blank = True,
         unique = False,
         help_text = 'Test field for Bar',
+    )
+    ifield, created = models.DynamicModelField.objects.get_or_create(
+        name = 'ifield',
+        field_type = 'dynamicintegerfield',
+        help_text = 'hope this helps',
+        model = test
     )
     return test
     

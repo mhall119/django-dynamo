@@ -1,24 +1,24 @@
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
-from dynamo import actions
+from dynamo import actions, utils
 from django.db import connections, router, transaction, models, DEFAULT_DB_ALIAS
 
 # Create your models here.
 
 DJANGO_FIELD_MAP = {
-    'dynamiccharfield':             'django.db.models.CharField',
-    'dynamictextfield':             'django.db.models.TextField',
-    'dynamicbooleanfield':          'django.db.models.BooleanField',
-    'dynamicintegerfield':          'django.db.models.IntegerField',
-    'dynamicpositiveintegerfield':  'django.db.models.PositiveIntegerField',
-    'dynamicdatefield':             'django.db.models.DateField',
-    'dynamictimefield':             'django.db.models.TimeField',
-    'dynamicdatetimefield':         'django.db.models.DatetimeField',
-    'dynamicurlfield':              'django.db.models.UrlField',
-    'dynamic_field':                'django.db.models._Field',
-    'dynamicforeignkeyfield':       'django.db.models.ForeignKey',
-    'dynamicmanytomanyfield':       'django.db.models.ManyToManyField',
-    'dynamic_field':                'django.db.models._Field',
+    'dynamiccharfield':             ('django.db.models', 'CharField'),
+    'dynamictextfield':             ('django.db.models', 'TextField'),
+    'dynamicbooleanfield':          ('django.db.models', 'BooleanField'),
+    'dynamicintegerfield':          ('django.db.models', 'IntegerField'),
+    'dynamicpositiveintegerfield':  ('django.db.models', 'PositiveIntegerField'),
+    'dynamicdatefield':             ('django.db.models', 'DateField'),
+    'dynamictimefield':             ('django.db.models', 'TimeField'),
+    'dynamicdatetimefield':         ('django.db.models', 'DatetimeField'),
+    'dynamicurlfield':              ('django.db.models', 'UrlField'),
+    'dynamic_field':                ('django.db.models', '_Field'),
+    'dynamicforeignkeyfield':       ('django.db.models', 'ForeignKey'),
+    'dynamicmanytomanyfield':       ('django.db.models', 'ManyToManyField'),
+    'dynamic_field':                ('django.db.models', '_Field'),
 }
 
 DJANGO_FIELD_CHOICES = [(key, value) for key, value in DJANGO_FIELD_MAP.items()]
@@ -110,5 +110,20 @@ class DynamicModelField(models.Model):
                             
     def to_field(self):
         # return models.Field(attributes)
-        return models.CharField(max_length=5, default='test')
-        pass
+        if self.field_type in DJANGO_FIELD_MAP:
+            module, klass = DJANGO_FIELD_MAP[self.field_type]
+            field_class = utils.get_module_attr(module, klass, models.CharField)
+        else:
+            field_class = models.CharField
+            
+        attrs = {
+            'verbose_name': self.verbose_name,
+            'null': self.null,
+            'blank': self.blank,
+            'unique': self.unique,
+            'help_text': self.help_text,
+        }
+        if field_class is models.CharField:
+            attrs['max_length'] = 64
+        return field_class(**attrs)
+
