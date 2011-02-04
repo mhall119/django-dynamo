@@ -37,6 +37,9 @@ class DynamicApp(models.Model):
                             help_text=_('Display name for this application'),
                             max_length=128, null=False, blank=False)
     
+    def __unicode__(self):
+        return self.verbose_name
+        
 class DynamicModel(models.Model):
 
     class Meta:
@@ -68,6 +71,9 @@ class DynamicModel(models.Model):
     def create(self, using=None):
         using = using or router.db_for_write(self.__class__, instance=self)
         actions.create(self.as_model(), using)
+        
+    def __unicode__(self):
+        return self.verbose_name
         
 class DynamicModelField(models.Model):
 
@@ -126,4 +132,8 @@ class DynamicModelField(models.Model):
         if field_class is models.CharField:
             attrs['max_length'] = 64
         return field_class(**attrs)
+    
+    def __unicode__(self):
+        return self.verbose_name
+        
 
