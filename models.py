@@ -21,7 +21,7 @@ DJANGO_FIELD_MAP = {
     'dynamic_field':                ('django.db.models', '_Field'),
 }
 
-DJANGO_FIELD_CHOICES = [(key, value) for key, value in DJANGO_FIELD_MAP.items()]
+DJANGO_FIELD_CHOICES = [(key, value[1]) for key, value in DJANGO_FIELD_MAP.items()]
 
 class DynamicApp(models.Model):
 
@@ -54,7 +54,7 @@ class DynamicModel(models.Model):
     app = models.ForeignKey(DynamicApp, related_name='models',
                             null=False, blank=False)
                             
-    def to_model(self):
+    def as_model(self):
         attrs = {}
         class Meta:
             app_label = self.app.name
@@ -62,12 +62,12 @@ class DynamicModel(models.Model):
         attrs['Meta'] = Meta
         attrs['__module__'] = 'dynamo.dynamic_apps.%s.models' % self.app.name
         for field in self.fields.all():
-            attrs[field.name] = field.to_field()
+            attrs[field.name] = field.as_field()
         return type(str(self.name), (models.Model,), attrs)
         
     def create(self, using=None):
         using = using or router.db_for_write(self.__class__, instance=self)
-        actions.create(self.to_model(), using)
+        actions.create(self.as_model(), using)
         
 class DynamicModelField(models.Model):
 
@@ -108,7 +108,7 @@ class DynamicModelField(models.Model):
                             help_text=_('Short description of the field\' purpose'),
                             max_length=256, null=True, blank=True)
                             
-    def to_field(self):
+    def as_field(self):
         # return models.Field(attributes)
         if self.field_type in DJANGO_FIELD_MAP:
             module, klass = DJANGO_FIELD_MAP[self.field_type]
