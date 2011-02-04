@@ -17,7 +17,7 @@ class DynamicModelAdmin(admin.ModelAdmin):
     fields = ('name', 'app', 'verbose_name')
     search_fields = ('name','verbose_name')
     ordering = ('app','name')
-    list_display = ('app', 'name', 'verbose_name')
+    list_display = ('name', 'verbose_name', 'app')
     list_filter = ('app',)
     actions = [create_tables]
     
@@ -26,7 +26,7 @@ admin.site.register(DynamicModel, DynamicModelAdmin)
 class DynamicModelFieldAdmin(admin.ModelAdmin):
     search_fields = ('name','verbose_name', 'field_type')
     ordering = ('name',)
-    list_display = ('model', 'name', 'verbose_name')
+    list_display = ('name', 'verbose_name', 'model')
     list_filter = ('model',)
 admin.site.register(DynamicModelField, DynamicModelFieldAdmin)
 

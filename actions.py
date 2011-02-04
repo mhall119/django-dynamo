@@ -8,6 +8,8 @@ from django.contrib.contenttypes.models import ContentType
 def create(model, using):
     ''' Mostly lifted from django.core.management.commands.syncdb'''
     
+    opts = model._meta
+
     # Get database connection and cursor
     db = using or DEFAULT_DB_ALIAS
     connection = connections[db]
@@ -20,7 +22,7 @@ def create(model, using):
     pending_references = {}
     
     # Abort if the table we're going to create already exists
-    if model._meta.db_table in tables:
+    if opts.db_table in tables:
         return
         
     # Build the manifest of apps and models that are to be synchronized
@@ -55,7 +57,6 @@ def create(model, using):
     tables.append(connection.introspection.table_name_converter(model._meta.db_table))
 
     # Create content_type
-    opts = model._meta
     try:
         ct = ContentType.objects.get(app_label=opts.app_label,
                                      model=opts.object_name.lower())

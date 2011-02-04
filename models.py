@@ -2,6 +2,8 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from dynamo import actions, utils
 from django.db import connections, router, transaction, models, DEFAULT_DB_ALIAS
+from django.db.models.loading import cache
+from django.utils.datastructures import SortedDict
 
 # Create your models here.
 
@@ -56,7 +58,19 @@ class DynamicModel(models.Model):
 
     app = models.ForeignKey(DynamicApp, related_name='models',
                             null=False, blank=False)
-                            
+        
+    def uncache(self):
+        ''' 
+        Removes the model this instance represents from Django's cache
+        
+        We need to remove the model from the cache whenever we change it
+        otherwise it won't have the changes next time it's loaded
+        '''
+                
+        cached_models = cache.app_models.get(self.app.name, SortedDict())
+        if cached_models.has_key(self.name.lower()):
+            del cached_models[self.name.lower()]
+
     def as_model(self):
         attrs = {}
         class Meta:
@@ -71,6 +85,10 @@ class DynamicModel(models.Model):
     def create(self, using=None):
         using = using or router.db_for_write(self.__class__, instance=self)
         actions.create(self.as_model(), using)
+        
+    def save(self, force_insert=False, force_update=False, using=None):
+        self.uncache()
+        super(DynamicModel, self).save(force_insert, force_update, using)
         
     def __unicode__(self):
         return self.verbose_name
@@ -133,6 +151,10 @@ class DynamicModelField(models.Model):
             attrs['max_length'] = 64
         return field_class(**attrs)
     
+    def save(self, force_insert=False, force_update=False, using=None):
+        super(DynamicModelField, self).save(force_insert, force_update, using)
+        self.model.uncache()
+        
     def __unicode__(self):
         return self.verbose_name
         
