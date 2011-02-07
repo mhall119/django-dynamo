@@ -4,26 +4,9 @@ from dynamo import actions, utils
 from django.db import connections, router, transaction, models, DEFAULT_DB_ALIAS
 from django.db.models.loading import cache
 from django.utils.datastructures import SortedDict
+from django.contrib.contenttypes.models import ContentType
 
 # Create your models here.
-
-DJANGO_FIELD_MAP = {
-    'dynamiccharfield':             ('django.db.models', 'CharField'),
-    'dynamictextfield':             ('django.db.models', 'TextField'),
-    'dynamicbooleanfield':          ('django.db.models', 'BooleanField'),
-    'dynamicintegerfield':          ('django.db.models', 'IntegerField'),
-    'dynamicpositiveintegerfield':  ('django.db.models', 'PositiveIntegerField'),
-    'dynamicdatefield':             ('django.db.models', 'DateField'),
-    'dynamictimefield':             ('django.db.models', 'TimeField'),
-    'dynamicdatetimefield':         ('django.db.models', 'DatetimeField'),
-    'dynamicurlfield':              ('django.db.models', 'UrlField'),
-    'dynamic_field':                ('django.db.models', '_Field'),
-    'dynamicforeignkeyfield':       ('django.db.models', 'ForeignKey'),
-    'dynamicmanytomanyfield':       ('django.db.models', 'ManyToManyField'),
-    'dynamic_field':                ('django.db.models', '_Field'),
-}
-
-DJANGO_FIELD_CHOICES = [(key, value[1]) for key, value in DJANGO_FIELD_MAP.items()]
 
 class DynamicApp(models.Model):
 
@@ -78,6 +61,16 @@ class DynamicModel(models.Model):
             verbose_name = self.verbose_name
         attrs['Meta'] = Meta
         attrs['__module__'] = 'dynamo.dynamic_apps.%s.models' % self.app.name
+        def uni(self):
+            unival = []
+            for f in self._meta.fields:
+                if len(unival) < 3 and f.__class__ is models.CharField:
+                    unival.append(getattr(self, f.name))
+            if len(unival) > 0:
+                return u' '.join(unival)
+            else:
+                return self.verbose_name
+        attrs['__unicode__'] = uni
         for field in self.fields.all():
             attrs[field.name] = field.as_field()
         return type(str(self.name), (models.Model,), attrs)
@@ -99,7 +92,34 @@ class DynamicModelField(models.Model):
         verbose_name = _('Dynamic Model Field')
         unique_together = (('model', 'name'),)
         
-    
+    DJANGO_FIELD_MAP = {
+        'dynamicbooleanfield':          ('django.db.models', 'BooleanField'),
+        'dynamiccharfield':             ('django.db.models', 'CharField'),
+        'dynamicdatefield':             ('django.db.models', 'DateField'),
+        'dynamicdatetimefield':         ('django.db.models', 'DatetimeField'),
+        'dynamicintegerfield':          ('django.db.models', 'IntegerField'),
+        'dynamicpositiveintegerfield':  ('django.db.models', 'PositiveIntegerField'),
+        'dynamictextfield':             ('django.db.models', 'TextField'),
+        'dynamictimefield':             ('django.db.models', 'TimeField'),
+        'dynamicurlfield':              ('django.db.models', 'UrlField'),
+#            'dynamicforeignkeyfield':       ('django.db.models', 'ForeignKey'),
+#            'dynamicmanytomanyfield':       ('django.db.models', 'ManyToManyField'),
+#            'dynamic_field':                ('django.db.models', '_Field'),
+    }
+
+    DJANGO_FIELD_CHOICES = [
+        ('Basic Fields', [(key, value[1]) for key, value in DJANGO_FIELD_MAP.items()])
+    ]
+    curlabel = None
+    curmodels = None
+    for c in ContentType.objects.all().order_by('app_label'):
+        if c.app_label != curlabel:
+            if curlabel is not None:
+                DJANGO_FIELD_CHOICES.append((curlabel.capitalize(), curmodels))
+            curlabel = c.app_label
+            curmodels = []
+        curmodels.append((c.model, c.name.capitalize()))
+        
     name = models.CharField(verbose_name=_('Field Name'),
                             help_text=_('Internal name for this field'),
                             max_length=64, null=False, blank=False)
@@ -133,13 +153,6 @@ class DynamicModelField(models.Model):
                             max_length=256, null=True, blank=True)
                             
     def as_field(self):
-        # return models.Field(attributes)
-        if self.field_type in DJANGO_FIELD_MAP:
-            module, klass = DJANGO_FIELD_MAP[self.field_type]
-            field_class = utils.get_module_attr(module, klass, models.CharField)
-        else:
-            field_class = models.CharField
-            
         attrs = {
             'verbose_name': self.verbose_name,
             'null': self.null,
@@ -147,8 +160,26 @@ class DynamicModelField(models.Model):
             'unique': self.unique,
             'help_text': self.help_text,
         }
+
+        field_class = None
+        if self.field_type in self.DJANGO_FIELD_MAP:
+            module, klass = self.DJANGO_FIELD_MAP[self.field_type]
+            field_class = utils.get_module_attr(module, klass, models.CharField)
+            
+        if field_class is None:
+            try:
+                ctype = ContentType.objects.get(model=self.field_type)
+                field_class = models.ForeignKey
+                attrs['to'] = ctype.model_class()
+            except:
+                field_class = None
+            
+        if field_class is None:
+            field_class = models.CharField
+            
         if field_class is models.CharField:
             attrs['max_length'] = 64
+            
         return field_class(**attrs)
     
     def save(self, force_insert=False, force_update=False, using=None):
