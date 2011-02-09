@@ -75,13 +75,15 @@ class DynamicModel(models.Model):
             attrs[field.name] = field.as_field()
         return type(str(self.name), (models.Model,), attrs)
         
-    def create(self, using=None):
-        using = using or router.db_for_write(self.__class__, instance=self)
-        actions.create(self.as_model(), using)
-        
     def save(self, force_insert=False, force_update=False, using=None):
-        self.uncache()
+        using = using or router.db_for_write(self.__class__, instance=self)
+        create = False
+        if self.pk is None or not self.__class__.objects.filter(pk=self.pk).exists():
+            create = True
         super(DynamicModel, self).save(force_insert, force_update, using)
+        if create:
+            actions.create(self.as_model(), using)
+        self.uncache()
         
     def __unicode__(self):
         return self.verbose_name
@@ -148,6 +150,10 @@ class DynamicModelField(models.Model):
                             help_text=_('Restrict this field to unique values'),
                             default=False, null=False, blank=False)
 
+    default = models.CharField(verbose_name=_('Default value'),
+                               help_text=_('Default value given to this field when none is provided'),
+                               max_length=32, null=True, blank=True)
+                               
     help_text = models.CharField(verbose_name=_('Help Text'),
                             help_text=_('Short description of the field\' purpose'),
                             max_length=256, null=True, blank=True)
@@ -159,6 +165,7 @@ class DynamicModelField(models.Model):
             'blank': self.blank,
             'unique': self.unique,
             'help_text': self.help_text,
+            'default': self.default,
         }
 
         field_class = None
@@ -182,10 +189,26 @@ class DynamicModelField(models.Model):
             
         return field_class(**attrs)
     
+    def delete(self, using=None):
+        super(DynamicModelField, self).delete(using)
+        
     def save(self, force_insert=False, force_update=False, using=None):
+        from south.db import db
+        create = False
+        if self.pk is None or not self.__class__.objects.filter(pk=self.pk).exists():
+            create = True
+
+        if create:
+            model_class = self.model.as_model()
+            field = self.as_field()
+            table = model_class._meta.db_table
+            db.add_column(table, self.name, field, keep_default=False)
+        else:
+            # what changed?
+            pass        
         super(DynamicModelField, self).save(force_insert, force_update, using)
         self.model.uncache()
-        
+            
     def __unicode__(self):
         return self.verbose_name
         

@@ -1,11 +1,6 @@
 from dynamo.models import DynamicApp, DynamicModel, DynamicModelField
 from django.contrib import admin
 
-def create_tables(modeladmin, request, queryset):
-    for m in queryset.all():
-        m.create()
-create_tables.short_description = "Create tables for selected Models"
-
 class DynamicAppAdmin(admin.ModelAdmin):
     fields = ('name', 'verbose_name')
     search_fields = ('name','verbose_name')
@@ -23,7 +18,6 @@ class DynamicModelAdmin(admin.ModelAdmin):
     ordering = ('app','name')
     list_display = ('name', 'verbose_name', 'app')
     list_filter = ('app',)
-    actions = [create_tables]
     inlines = [ModelFieldInline]
     
 admin.site.register(DynamicModel, DynamicModelAdmin)
