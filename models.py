@@ -132,6 +132,7 @@ class DynamicModelField(models.Model):
     class Meta:
         verbose_name = _('Dynamic Model Field')
         unique_together = (('model', 'name'),)
+        ordering = ('id',)
         
     def __init__(self, *args, **kargs):
         super(DynamicModelField, self).__init__(*args, **kargs)
@@ -190,16 +191,20 @@ class DynamicModelField(models.Model):
         if field_class is None:
             try:
                 ctype = ContentType.objects.get(model=self.field_type)
+                print "Found ctype: %s" % ctype
                 field_class = models.ForeignKey
-                attrs['to'] = ctype.model_class()
+                model_def = DynamicModel.objects.get(name=ctype.model, app__name=ctype.app_label)
+                model_klass = model_def.as_model()
+                attrs['to'] = model_klass
                 if attrs['to'] is None:
                     del attrs['to']
-                    raise Exception('Could not get model class from %s' % ctype)
+                    raise Exception('Could not get model class from %s' % ctype.model)
             except Exception, e:
                 print "Failed to set foreign key: %s" % e
                 field_class = None
             
         if field_class is None:
+            print "No field class found for %s, using CharField as default" % self.field_type
             field_class = models.CharField
             
         if field_class is models.CharField:
@@ -228,7 +233,7 @@ class DynamicModelField(models.Model):
         if create:
             db.add_column(table, self.name, field, keep_default=False)
         else:
-            db.alter_column(table, self.name, field, keep_default=False)
+            pass#db.alter_column(table, self.name, field)
         
         super(DynamicModelField, self).save(force_insert, force_update, using)
         self.model.uncache()
