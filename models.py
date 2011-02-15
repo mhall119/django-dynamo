@@ -180,8 +180,10 @@ class DynamicModelField(models.Model):
             'blank': self.blank,
             'unique': self.unique,
             'help_text': self.help_text,
-            'default': self.default,
         }
+
+        if self.default is not None and self.default != '':
+            attrs['default'] = self.default
 
         field_class = None
         if self.field_type in DJANGO_FIELD_MAP:
