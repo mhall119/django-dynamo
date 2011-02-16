@@ -193,7 +193,6 @@ class DynamicModelField(models.Model):
         if field_class is None:
             try:
                 ctype = ContentType.objects.get(model=self.field_type)
-                print "Found ctype: %s (%s.%s)" % (ctype, ctype.app_label, ctype.model)
                 field_class = models.ForeignKey
                 model_def = DynamicModel.objects.get(name__iexact=ctype.model, app__name__iexact=ctype.app_label)
                 model_klass = model_def.as_model()
