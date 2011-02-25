@@ -134,9 +134,6 @@ class DynamicModelField(models.Model):
         unique_together = (('model', 'name'),)
         ordering = ('id',)
         
-    def __init__(self, *args, **kargs):
-        super(DynamicModelField, self).__init__(*args, **kargs)
-        
     name = models.SlugField(verbose_name=_('Field Name'),
                             help_text=_('Internal name for this field'),
                             max_length=64, null=False, blank=False)
